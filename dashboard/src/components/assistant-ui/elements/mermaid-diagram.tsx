@@ -40,10 +40,11 @@ const renderDiagram = (code: string, dark: boolean): Promise<string> => {
     renders += 1;
     const { svg } = await mermaid.render(`mermaid-diagram-${renders}`, code);
 
-    const root = new DOMParser().parseFromString(
-      svg,
-      "image/svg+xml",
-    ).documentElement;
+    // The labels are HTML, which is not always valid XML, so the HTML parser reads the SVG.
+    const root = new DOMParser()
+      .parseFromString(svg, "text/html")
+      .querySelector("svg");
+    if (!root) throw new Error("Mermaid returned no SVG.");
     const [, , width, height] = (root.getAttribute("viewBox") ?? "").split(
       /[\s,]+/,
     );

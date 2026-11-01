@@ -594,7 +594,7 @@ test('a wide table leaves the reading column, and scrolls when even that is too 
 // parse, so the source shows until the message is complete.
 test('a mermaid block shows its source while streaming, then a diagram that opens full screen', async () => {
   const diagram =
-    '```mermaid\nflowchart LR\n  A[Request] --> B{Cached?}\n  B -->|yes| C[Answer]\n  B -->|no| D[Fetch]\n```';
+    '```mermaid\nflowchart LR\n  A[Request] --> B{Cached?}\n  B -->|yes| C[Answer]\n  B -->|no| D[Fetch<br>again]\n```';
   const broken = '```mermaid\nflowchart LR\n  A --> -->\n```';
   await start({
     prompts: [
