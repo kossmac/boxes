@@ -59,6 +59,13 @@ The mode controls how much the agent does without asking, for example the plan m
 of Codex. Changes apply to the open thread at once. The orchestrator records the mode and settings, so a restarted
 adapter puts the thread back the way it was.
 
+## Images and links in answers
+
+An image or a link in an answer of the agent can name a file in the workspace. The path is absolute in `/workspace` or
+relative to `/workspace`. The dashboard then shows the image from the box, and a link opens the file in a new tab. The
+dashboard loads the current version of the file, so an old answer shows a changed file in its new state. A file outside
+`/workspace` does not show. An image can also be a data URL.
+
 ## Permission requests
 
 Some tool calls need a decision. The question renders on the tool call that caused it, and the turn waits for an answer.

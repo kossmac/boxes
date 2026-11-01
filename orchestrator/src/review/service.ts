@@ -10,7 +10,6 @@ import {
   type FileRead,
   type FileService,
   FileServiceError,
-  type FileStream,
   fileService,
   isMissing,
   isRefusedPath,
@@ -361,29 +360,6 @@ export class ReviewService {
       },
       annotations,
     };
-  }
-
-  /**
-   * Gives the bytes of a file that the review offers, as a stream.
-   *
-   * The method applies {@link listedFile} as {@link ReviewService.resolveFile} does, but it does not run git.
-   * A deleted file has no bytes to serve, so it gets the same 404 as any path
-   * that the review does not offer.
-   *
-   * @param id The box id.
-   * @param relPath The workspace-relative path of the file.
-   * @returns The content of the file as a stream, with its size.
-   * @throws {HttpError} 404 for an unknown box or a path that the review does not offer.
-   */
-  async rawFile(id: string, relPath: string): Promise<FileStream> {
-    if (!listedFile(relPath)) throw new HttpError(404, 'File not found');
-    const box = await this.box(id);
-    try {
-      return await box.files.readStream(relPath);
-    } catch (err) {
-      if (isRefusedPath(err)) throw new HttpError(404, 'File not found');
-      throw err;
-    }
   }
 
   /**

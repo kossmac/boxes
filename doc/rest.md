@@ -85,13 +85,19 @@ itself. It reaches work no adapter names any more, such as what a crashed adapte
 | Method | Path | Answer |
 | --- | --- | --- |
 | POST | `/api/boxes/:id/attachments?name=<file>` | `StoredAttachment` |
-| GET | `/api/boxes/:id/attachments/:name` | file bytes |
 
 The POST body is the file's raw bytes with content type `application/octet-stream`. The limit is `MAX_ATTACHMENT_MB`
 (default 25). The file lands in the box's [workspace](storage.md) under `.boxes/attachments/`, and the answer carries
 the workspace-relative path for the prompt that mentions it.
 
-The GET serves a stored attachment back, which is how the thread shows a picture the user attached.
+## Workspace files
+
+| Method | Path | Answer |
+| --- | --- | --- |
+| GET | `/api/boxes/:id/files/raw?path=<p>` | file bytes |
+
+`path` is workspace-relative. The thread uses the route for attachments and for the images and links in an answer, and
+the review uses it to open a file. The content type comes from the file name.
 
 ## Code review
 
@@ -99,7 +105,6 @@ The GET serves a stored attachment back, which is how the thread shows a picture
 | --- | --- | --- |
 | GET | `/api/boxes/:id/review/dir?path=<p>&fresh=1` | `ReviewDirResponse` |
 | GET | `/api/boxes/:id/review/file?path=<p>` | `ReviewFileResponse` |
-| GET | `/api/boxes/:id/review/raw?path=<p>` | file bytes |
 | PUT | `/api/boxes/:id/review/file` | `ReviewFileResponse` |
 | PUT | `/api/boxes/:id/review/annotations` | `ReviewAnnotationsResponse` |
 | DELETE | `/api/boxes/:id/review/annotations?path=<p>&line=<n>` | `ReviewAnnotationsResponse` |
