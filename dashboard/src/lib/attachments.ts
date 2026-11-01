@@ -134,16 +134,3 @@ const THUMBNAIL_TYPES = new Set([
 export function isThumbnailable(mimeType: string): boolean {
   return THUMBNAIL_TYPES.has(mimeType.toLowerCase());
 }
-
-/**
- * The URL of one stored attachment.
- *
- * @param boxId The id of the box.
- * @param path The workspace-relative path from the envelope. Only its last
- *   segment goes into the URL.
- * @returns The URL path of the attachment.
- */
-export function attachmentUrl(boxId: string, path: string): string {
-  const name = path.split('/').pop() ?? path;
-  return `/api/boxes/${encodeURIComponent(boxId)}/attachments/${encodeURIComponent(name)}`;
-}

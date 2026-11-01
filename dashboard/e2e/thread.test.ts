@@ -124,7 +124,9 @@ test('an attached image is uploaded, named in the prompt, and shown from the wor
     // The thread shows the picture, fetched from the workspace, not the note.
     const picture = page.locator('[data-slot="aui_user-message-image"] img').first();
     await expect.poll(() => picture.count()).toBe(1);
-    expect(await picture.getAttribute('src')).toBe(`/api/boxes/${BOX.id}/attachments/shot.png`);
+    expect(await picture.getAttribute('src')).toBe(
+      `/api/boxes/${BOX.id}/files/raw?path=.boxes%2Fattachments%2Fshot.png`,
+    );
     // Loaded, not only linked.
     await expect
       .poll(() => picture.evaluate((img: HTMLImageElement) => img.naturalWidth))
@@ -218,7 +220,7 @@ test('an attached file that is not an image travels as a path, and reads as a ch
     await expect.poll(() => page.getByText('report.pdf').isVisible()).toBe(true);
     const link = page.locator('[data-slot="aui_user-message-file"] a').first();
     const href = await link.getAttribute('href');
-    expect(href).toBe(`/api/boxes/${BOX.id}/attachments/report.pdf`);
+    expect(href).toBe(`/api/boxes/${BOX.id}/files/raw?path=.boxes%2Fattachments%2Freport.pdf`);
     expect(await link.getAttribute('target')).toBe('_blank');
     expect(await link.getAttribute('rel')).toContain('noopener');
 

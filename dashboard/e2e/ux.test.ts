@@ -620,6 +620,51 @@ test('a markdown image with a data URL shows the image', async () => {
   }
 });
 
+// An agent shows a file that it made with the path of the file.
+test('a markdown image or link with a workspace path loads the file from the box', async () => {
+  await start({
+    prompts: [
+      {
+        match: () => true,
+        updates: reply(
+          'here it is\n\n![a chart](/workspace/docs/chart.svg)\n\n[the notes](docs/notes.txt)\n',
+        ),
+      },
+    ],
+  });
+  stub.write(
+    BOX.id,
+    'docs/chart.svg',
+    '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20"/></svg>',
+  );
+  stub.write(BOX.id, 'docs/notes.txt', 'some notes\n');
+
+  const { page, errors, close } = await openPage(
+    stub.url,
+    `/boxes/${BOX.id}/threads/${BOX.threadId}`,
+  );
+  try {
+    const input = page.getByLabel('Message input');
+    await input.fill('show me the chart');
+    await input.press('Control+Enter');
+    const image = page.getByAltText('a chart');
+    await expect.poll(() => image.isVisible(), { timeout: 10_000 }).toBe(true);
+    expect(await image.getAttribute('src')).toBe(
+      `/api/boxes/${BOX.id}/files/raw?path=docs%2Fchart.svg`,
+    );
+    expect(await image.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(40);
+
+    const link = page.getByRole('link', { name: 'the notes' });
+    const href = await link.getAttribute('href');
+    expect(href).toBe(`/api/boxes/${BOX.id}/files/raw?path=docs%2Fnotes.txt`);
+    const res = await page.request.get(new URL(href!, stub.url).href);
+    expect(await res.text()).toBe('some notes\n');
+    expect(errors).toEqual([]);
+  } finally {
+    await close();
+  }
+});
+
 // An agent draws a diagram as a mermaid code block. Half a diagram does not
 // parse, so the source shows until the message is complete.
 test('a mermaid block shows its source while streaming, then a diagram that opens full screen', async () => {

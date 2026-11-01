@@ -11,12 +11,14 @@ import {
 import { defaultUrlTransform, type UrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { type FC, memo, useMemo, useRef } from "react";
+import { useParams } from "react-router";
 import type { TextMessagePartProps } from "@assistant-ui/react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { MermaidDiagram } from "@/components/assistant-ui/elements/mermaid-diagram";
 import { TooltipIconButton } from "@/components/assistant-ui/elements/tooltip-icon-button";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
+import { fileUrl, workspacePath } from "@/lib/files";
 import { cn } from "@/lib/utils";
 
 /** The props of {@link MarkdownText}: the text part props and extra markdown components. */
@@ -50,9 +52,14 @@ const useShallowStable = <T extends Record<string, unknown> | undefined>(
 /**
  * Renders the text part of a message as GitHub-flavoured markdown.
  *
+ * Boxes edit: in the view of a box, a link or an image with the path of a
+ * workspace file loads the file from the box.
+ *
  * @param components Components that replace the default components for some elements.
  */
 const MarkdownTextImpl: FC<MarkdownTextProps> = ({ components }) => {
+  const { id: boxId } = useParams();
+  const urlTransform = useMemo(() => urlTransformFor(boxId), [boxId]);
   const stableComponents = useShallowStable(components);
   const markdownComponents = useMemo(() => {
     if (!stableComponents) return defaultComponents;
@@ -78,15 +85,22 @@ const MarkdownTextImpl: FC<MarkdownTextProps> = ({ components }) => {
 export const MarkdownText = memo(MarkdownTextImpl);
 
 /**
- * Boxes edit: filters the URLs of links and images. The source of an image can
- * also be a data URL of an image. All other URLs go through the default filter.
+ * Boxes edit: makes the filter for the URLs of links and images.
  *
- * @param url The URL.
- * @param key The attribute that holds the URL.
- * @returns The URL, or an empty string when it is not safe.
+ * The source of an image can also be a data URL of an image. With a box, the
+ * path of a workspace file becomes the URL that loads the file. All other URLs
+ * go through the default filter.
+ *
+ * @param boxId The id of the box, or undefined outside the view of a box.
+ * @returns The filter.
  */
-const urlTransform: UrlTransform = (url, key) =>
-  key === "src" && /^data:image\//i.test(url) ? url : defaultUrlTransform(url);
+const urlTransformFor =
+  (boxId: string | undefined): UrlTransform =>
+  (url, key) => {
+    if (key === "src" && /^data:image\//i.test(url)) return url;
+    const path = boxId && workspacePath(url);
+    return path ? fileUrl(boxId, path) : defaultUrlTransform(url);
+  };
 
 /** Boxes edit: the components by code block language. A mermaid code block shows as a diagram. */
 const componentsByLanguage = {

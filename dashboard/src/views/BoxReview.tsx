@@ -21,6 +21,7 @@ import { useScrollAway } from '@/hooks/use-scroll-away';
 import { useUp } from '@/hooks/use-up';
 import { useViewportLock } from '@/hooks/use-viewport-lock';
 import { anchorAt, rowOffsets, type ScrollAnchor, scrollForAnchor } from '@/lib/anchor';
+import { fileUrl } from '@/lib/files';
 import { withinLineLimit } from '@/lib/highlight';
 import { historyIndex } from '@/lib/history';
 import { stagePrompt } from '@/lib/staged-prompt';
@@ -558,7 +559,7 @@ export function BoxReview() {
                 dirty={edit.dirty}
                 busy={saving}
                 // A deleted file has no bytes left to serve.
-                openHref={file.deleted ? null : rawHref(id, file.path)}
+                openHref={file.deleted ? null : fileUrl(id, file.path)}
                 onWrap={() => setWrap((w) => !w)}
                 onStepChange={(direction) => step(changedLines, direction)}
                 onStepComment={(direction) => step(commentedLines, direction)}
@@ -573,7 +574,7 @@ export function BoxReview() {
                   <p>This file is binary, so it cannot be shown here.</p>
                   {/* A plain link, so the browser handles the file by its type. */}
                   <Button asChild variant="outline" size="sm">
-                    <a href={rawHref(id, file.path)} target="_blank" rel="noopener">
+                    <a href={fileUrl(id, file.path)} target="_blank" rel="noopener">
                       <ExternalLink />
                       Open in a new tab
                     </a>
@@ -731,17 +732,6 @@ function plainClick(event: React.MouseEvent): boolean {
     !event.shiftKey &&
     !event.altKey
   );
-}
-
-/**
- * Builds the URL that serves the bytes of one workspace file, with a content type from its name.
- *
- * @param id The id of the box.
- * @param path The workspace path of the file.
- * @returns The URL path.
- */
-function rawHref(id: string, path: string): string {
-  return `/api/boxes/${encodeURIComponent(id)}/review/raw?path=${encodeURIComponent(path)}`;
 }
 
 /**

@@ -8,8 +8,9 @@ runs as the `agent` account.
 
 | Feature | Operations |
 | --- | --- |
-| [Code review](review.md) | list a directory, find the repositories, read, download and save a file, read and write `REVIEW.md`, delete the review |
-| Attachments of a [thread](threads.md) | create the attachment directory, store an attachment, download it again |
+| [Code review](review.md) | list a directory, find the repositories, read and save a file, read and write `REVIEW.md`, delete the review |
+| Attachments of a [thread](threads.md) | create the attachment directory, store an attachment |
+| [Workspace files](rest.md#workspace-files) | download a file |
 | [Disk usage](storage.md#disk-usage) | measure the size of the workspace, the home and the Nix store |
 | [Box setup](boxes.md#the-setup) | write the CA and the git configuration into the home |
 | [Agent sets](agent-sets.md) | install the merged set into the home |

@@ -1,12 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import {
-  attachmentUrl,
-  buildEnvelope,
-  formatBytes,
-  isThumbnailable,
-  parseEnvelope,
-} from './attachments.ts';
+import { buildEnvelope, formatBytes, isThumbnailable, parseEnvelope } from './attachments.ts';
 
 /** An image entry, as the envelope carries it. */
 const ENTRY = {
@@ -61,13 +55,6 @@ test('sizes are formatted in the units a person would say', () => {
   assert.equal(formatBytes(512), '512 B');
   assert.equal(formatBytes(2048), '2.0 KB');
   assert.equal(formatBytes(3 * 1024 * 1024), '3.0 MB');
-});
-
-test('an attachment is fetched back by name, from its box', () => {
-  assert.equal(
-    attachmentUrl('abc123', '.boxes/attachments/shot.png'),
-    '/api/boxes/abc123/attachments/shot.png',
-  );
 });
 
 test('only the image types the endpoint serves inline are shown as pictures', () => {

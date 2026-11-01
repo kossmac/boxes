@@ -24,7 +24,7 @@ import type {
 } from '../../shared/types.ts';
 import { AgentStore } from './agents.ts';
 import { ApiKeyStore } from './api-keys.ts';
-import { ATTACHMENTS_DIR, servedTypeFor, storeAttachment } from './attachments.ts';
+import { servedTypeFor, storeAttachment } from './attachments.ts';
 import {
   agentItemBody,
   agentMcpServerBody,
@@ -813,26 +813,25 @@ export function buildApp(cfg: Config, db: Db, opts: BuildOptions = {}): Orchestr
   );
 
   /**
-   * Sends one stored attachment, so the thread can show the picture that the
-   * user attached. The file service in the box reads the file, so the
-   * orchestrator starts a stopped box for the request.
+   * Sends one file of the workspace as its bytes. The thread uses it for the
+   * attachments and for the images and links in a message. The review uses it
+   * for a file that it cannot show as text. The file service in the box reads
+   * the file, so the orchestrator starts a stopped box for the request.
    */
-  app.get('/api/boxes/:id/attachments/:name', async (req, reply) => {
-    const { id, name } = req.params as { id: string; name: string };
-    // A stored name is always a single path component.
-    if (name.includes('/') || name.includes('\\')) {
-      throw new HttpError(404, 'Attachment not found');
-    }
+  app.get('/api/boxes/:id/files/raw', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const { path } = req.query as { path?: string };
+    if (!path) throw new HttpError(400, 'path is required');
 
     const target = await manager.execTarget(id);
     let file: FileStream;
     try {
-      file = await fileService(target.boxId).readStream(`${ATTACHMENTS_DIR}/${name}`);
+      file = await fileService(target.boxId).readStream(path);
     } catch (err) {
-      if (isRefusedPath(err)) throw new HttpError(404, 'Attachment not found');
+      if (isRefusedPath(err)) throw new HttpError(404, 'File not found');
       throw err;
     }
-    return sendWorkspaceFile(reply, file.stream, name, file.size);
+    return sendWorkspaceFile(reply, file.stream, basename(path), file.size);
   });
 
   // --- Code review over the workspace of a box ---------------------------
@@ -856,18 +855,6 @@ export function buildApp(cfg: Config, db: Db, opts: BuildOptions = {}): Orchestr
     const { path } = req.query as { path?: string };
     if (!path) throw new HttpError(400, 'path is required');
     return review.file(id, path);
-  });
-
-  /**
-   * One file of the workspace as its bytes, for a file that the view cannot
-   * show as text. The response has the same headers as an attachment.
-   */
-  app.get('/api/boxes/:id/review/raw', async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const { path } = req.query as { path?: string };
-    if (!path) throw new HttpError(400, 'path is required');
-    const file = await review.rawFile(id, path);
-    return sendWorkspaceFile(reply, file.stream, basename(path), file.size);
   });
 
   /**
