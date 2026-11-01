@@ -8,6 +8,7 @@ import {
   unstable_memoizeMarkdownComponents as memoizeMarkdownComponents,
   useIsMarkdownCodeBlock,
 } from "@assistant-ui/react-markdown";
+import { defaultUrlTransform, type UrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { type FC, memo, useMemo, useRef } from "react";
 import type { TextMessagePartProps } from "@assistant-ui/react";
@@ -64,6 +65,7 @@ const MarkdownTextImpl: FC<MarkdownTextProps> = ({ components }) => {
   return (
     <MarkdownTextPrimitive
       remarkPlugins={[remarkGfm]}
+      urlTransform={urlTransform}
       className="aui-md"
       components={markdownComponents}
       componentsByLanguage={componentsByLanguage}
@@ -74,6 +76,17 @@ const MarkdownTextImpl: FC<MarkdownTextProps> = ({ components }) => {
 
 /** The memoized markdown text part. */
 export const MarkdownText = memo(MarkdownTextImpl);
+
+/**
+ * Boxes edit: filters the URLs of links and images. The source of an image can
+ * also be a data URL of an image. All other URLs go through the default filter.
+ *
+ * @param url The URL.
+ * @param key The attribute that holds the URL.
+ * @returns The URL, or an empty string when it is not safe.
+ */
+const urlTransform: UrlTransform = (url, key) =>
+  key === "src" && /^data:image\//i.test(url) ? url : defaultUrlTransform(url);
 
 /** Boxes edit: the components by code block language. A mermaid code block shows as a diagram. */
 const componentsByLanguage = {
