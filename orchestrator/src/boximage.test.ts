@@ -5,7 +5,9 @@ import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import Docker from 'dockerode';
 import { afterEach, beforeEach, describe, it } from 'vitest';
+import { ApiKeyStore } from './api-keys.ts';
 import { buildApp, type Orchestrator } from './app.ts';
+import { boxEnv } from './boxenv.ts';
 import { loadConfig } from './config.ts';
 import { type Db, openDb, touchBox } from './db.ts';
 import * as dk from './docker.ts';
@@ -14,6 +16,9 @@ import { inProcessFileService } from './files-in-process.ts';
 import { runtime } from './runtime/runtime.ts';
 import { patchSettings } from './settings.ts';
 import * as ws from './workspaces.ts';
+
+/** An OpenRouter key for the tests. */
+const OPENROUTER_KEY = 'sk-or-v1-0123456789abcdef0123456789abcdef';
 
 /** The box image the test config names. */
 const IMAGE = 'ghcr.io/example/box:latest';
@@ -220,6 +225,24 @@ let orchestrator: Orchestrator;
 let fake: Fake;
 
 /**
+ * Builds the environment that a box of the empty user gets now.
+ *
+ * @param proxyUrl The URL of the egress proxy.
+ * @returns The NAME=value entries.
+ */
+function currentEnv(proxyUrl: string): string[] {
+  const env = boxEnv({
+    placeholderFor: (credential) => orchestrator.egress.placeholderFor('', credential),
+    methodFor: (credential) => orchestrator.egress.methodFor('', credential),
+    gitlabHost: orchestrator.cfg.GITLAB_HOST,
+    proxyUrl,
+    hasCa: orchestrator.egress.caCertificate() !== '',
+    apiKeys: orchestrator.egress.apiKeyEnv(''),
+  });
+  return Object.entries(env).map(([name, value]) => `${name}=${value}`);
+}
+
+/**
  * Inserts a stopped box with its container `box-<id>` on `imageId`.
  *
  * The workspace and home directories are created too, because a start
@@ -227,7 +250,7 @@ let fake: Fake;
  *
  * @param id The id of the box.
  * @param imageId The image id of the container.
- * @param proxyUrl The HTTP_PROXY of the container. The default is the proxy URL of the box.
+ * @param proxyUrl The proxy URL in the environment of the container. The default is the proxy URL of the box.
  */
 function insertBox(id: string, imageId: string, proxyUrl?: string): void {
   const now = Date.now();
@@ -235,7 +258,7 @@ function insertBox(id: string, imageId: string, proxyUrl?: string): void {
   fake.containers.set(`box-${id}`, {
     image: imageId,
     running: false,
-    env: [`HTTP_PROXY=${proxyUrl ?? runtime().proxyUrl(id, token)}`],
+    env: currentEnv(proxyUrl ?? runtime().proxyUrl(id, token)),
   });
   db.prepare(
     `INSERT INTO boxes (id, name, profile, status, proxy_token, created_at, last_active_at)
@@ -351,6 +374,36 @@ describe('starting a box whose image has moved', () => {
     const env = fake.created[0]!.Env as string[];
     assert.ok(env.includes(`HTTP_PROXY=${runtime().proxyUrl('a3', 'token-of-a3')}`));
     assert.equal(fake.containers.get('box-a3')?.running, true);
+  });
+
+  it('recreates a stopped container that lacks an API key stored since', async () => {
+    insertBox('a3', 'sha256:one');
+    const key = new ApiKeyStore(db, () => {}).put(
+      '',
+      'OPENROUTER_API_KEY',
+      ['openrouter.ai'],
+      OPENROUTER_KEY,
+    );
+
+    await orchestrator.manager.start('a3');
+
+    assert.deepEqual(fake.removed, ['box-a3']);
+    assert.equal(fake.created.length, 1);
+    const env = fake.created[0]!.Env as string[];
+    assert.ok(env.includes(`OPENROUTER_API_KEY=${key.placeholder}`));
+  });
+
+  it('recreates a stopped container that holds an API key removed since', async () => {
+    const keys = new ApiKeyStore(db, () => {});
+    keys.put('', 'OPENROUTER_API_KEY', ['openrouter.ai'], OPENROUTER_KEY);
+    insertBox('a3', 'sha256:one');
+    keys.remove('', 'OPENROUTER_API_KEY');
+
+    await orchestrator.manager.start('a3');
+
+    assert.deepEqual(fake.removed, ['box-a3']);
+    const env = fake.created[0]!.Env as string[];
+    assert.ok(!env.some((entry) => entry.startsWith('OPENROUTER_API_KEY=')));
   });
 
   it('defers a running container rather than killing the turn in it', async () => {
