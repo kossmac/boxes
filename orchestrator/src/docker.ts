@@ -342,19 +342,43 @@ export async function containerImageId(container: string): Promise<string | null
 }
 
 /**
- * Gives the value of one environment variable of a container, as the container was created.
+ * Converts NAME=value entries to a record by name.
+ *
+ * @param entries The entries.
+ * @returns The values by name.
+ */
+function envRecord(entries: string[]): Record<string, string> {
+  return Object.fromEntries(
+    entries.map((e) => {
+      const at = e.indexOf('=');
+      return at === -1 ? [e, ''] : [e.slice(0, at), e.slice(at + 1)];
+    }),
+  );
+}
+
+/**
+ * Gives the environment of a container, as the container was created. It holds
+ * the variables of its image too.
  *
  * @param container The name or id of the container.
- * @param name The name of the variable.
- * @returns The value, the empty string when the container has no such variable, or null when the container does
- *   not exist.
+ * @returns The values by name, or null when the container does not exist.
  */
-export async function containerEnvValue(container: string, name: string): Promise<string | null> {
-  return inspecting(async () => {
-    const env = (await docker().getContainer(container).inspect()).Config?.Env ?? [];
-    const entry = env.find((e) => e.startsWith(`${name}=`));
-    return entry === undefined ? '' : entry.slice(name.length + 1);
-  });
+export async function containerEnv(container: string): Promise<Record<string, string> | null> {
+  return inspecting(async () =>
+    envRecord((await docker().getContainer(container).inspect()).Config?.Env ?? []),
+  );
+}
+
+/**
+ * Gives the environment that an image sets.
+ *
+ * @param image The image reference or id.
+ * @returns The values by name, or null when the image is not on this host.
+ */
+export async function imageEnv(image: string): Promise<Record<string, string> | null> {
+  return inspecting(async () =>
+    envRecord((await docker().getImage(image).inspect()).Config?.Env ?? []),
+  );
 }
 
 /**

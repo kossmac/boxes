@@ -20,6 +20,18 @@ import {
 } from './runtime.ts';
 
 /**
+ * Checks if two environments have the same variables with the same values.
+ *
+ * @param a The values by name.
+ * @param b The values by name.
+ * @returns True when both are equal.
+ */
+function sameEnv(a: Record<string, string>, b: Record<string, string>): boolean {
+  const names = Object.keys(a);
+  return names.length === Object.keys(b).length && names.every((name) => b[name] === a[name]);
+}
+
+/**
  * The runtime that runs the boxes on the Docker daemon of this host.
  *
  * A box is the container `box-<id>` on its own internal network `bn-<id>`,
@@ -167,8 +179,9 @@ export class DockerRuntime implements Runtime {
 
   /**
    * Replaces a stopped container when its image differs from the image that
-   * BOX_IMAGE resolves to, or when its HTTP_PROXY, which holds the token of
-   * the box, differs from the value in the spec.
+   * BOX_IMAGE resolves to, or when its environment differs from the
+   * environment in the spec. The environment holds the token of the box in
+   * HTTP_PROXY and the placeholders of the credentials and the API keys.
    *
    * The comparison uses image ids, because a tag such as `latest` can name a
    * new image.
@@ -180,11 +193,13 @@ export class DockerRuntime implements Runtime {
     const container = dk.names.container(box.boxId);
     let wanted: string | null;
     let current: string | null;
-    let proxy: string | null;
+    let env: Record<string, string> | null;
+    let imageEnv: Record<string, string> | null;
     try {
       wanted = await dk.imageId(this.cfg.BOX_IMAGE);
       current = await dk.containerImageId(container);
-      proxy = await dk.containerEnvValue(container, 'HTTP_PROXY');
+      env = await dk.containerEnv(container);
+      imageEnv = current ? await dk.imageEnv(current) : null;
     } catch (err) {
       // A box that already has a container can start without the comparison.
       slog.warn('could not compare the container with the box spec; starting it as it is', {
@@ -194,10 +209,12 @@ export class DockerRuntime implements Runtime {
     }
     // Keep the container when the host has no BOX_IMAGE or the container is
     // gone. start() reports a missing container.
-    if (!wanted || !current || proxy === null) return;
+    if (!wanted || !current || env === null) return;
     const newImage = wanted !== current;
-    const newProxy = proxy !== (box.env.HTTP_PROXY ?? '');
-    if (!newImage && !newProxy) return;
+    // The container has the variables of its image and of the spec. A variable
+    // of the spec has priority.
+    const newEnv = !sameEnv(env, { ...imageEnv, ...box.env });
+    if (!newImage && !newEnv) return;
 
     if (newImage) {
       slog.info('recreating the container on the current box image', {
@@ -205,7 +222,7 @@ export class DockerRuntime implements Runtime {
         image: this.cfg.BOX_IMAGE,
       });
     } else {
-      slog.info('recreating the container with a new proxy URL');
+      slog.info('recreating the container with a new environment');
     }
     // Both tolerate a container that is gone.
     await dk.stopContainer(container);

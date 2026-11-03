@@ -132,8 +132,8 @@ Every start goes through a repair pass, `BoxManager.prepareContainer`, which `br
 container. A missing workspace or home directory marks the box `error` rather than being
 recreated — a fresh home would erase the agent's transcripts without a warning. Then `ensure` of the runtime
 (`orchestrator/src/runtime/docker.ts`) repairs the box. A container the daemon reports missing is recreated together
-with its network. A container whose image id no longer matches the box image is replaced, but never while it runs, so a
-turn is never interrupted.
+with its network. A container whose image id no longer matches the box image, or whose environment differs from the
+environment the box gets now, is replaced, but never while it runs, so a turn is never interrupted.
 
 ### The setup
 
